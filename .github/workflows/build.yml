@@ -45,7 +45,7 @@ jobs:
         & "$env:QT_ROOT\bin\windeployqt.exe" --release --no-translations --no-system-d3d-compiler $exePath
 
     - name: Create artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MouseAssistant
         path: |
