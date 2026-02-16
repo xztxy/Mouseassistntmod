@@ -325,10 +325,10 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
 
     layout->addLayout(buttonLayout);
 
-    topmostCheckBox = new QCheckBox(QStringLiteral("保持选择窗口激活置顶（推荐勾选）"), this);
+    topmostCheckBox = new QCheckBox("Keep window activated and topmost (recommended)", this);
     layout->addWidget(topmostCheckBox);
 
-    backgroundModeCheckBox = new QCheckBox(QStringLiteral("后台执行模式（不激活窗口）"), this);
+    backgroundModeCheckBox = new QCheckBox("Background execution mode (do not activate window)", this);
     layout->addWidget(backgroundModeCheckBox);
 
     connect(topmostCheckBox, &QCheckBox::stateChanged, this, &MouseAssistantStd::onTopmostCheckBoxChanged);
