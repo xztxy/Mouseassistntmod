@@ -203,7 +203,7 @@ void sendMouseMsg(HWND hwnd, int screenX, int screenY, int MsgType){
 MouseAssistantStd *MouseAssistantStd::instance = nullptr;
 
 MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
-    setWindowTitle(QStringLiteral("鼠标助手标准版"));
+    setWindowTitle("Mouse Assistant Standard");
     setWindowIcon(QIcon(":/png/mouse.ico"));
     instance = this;
     resize(300, 400);
@@ -219,20 +219,20 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
     // 创建顶部按钮
     QToolButton *clearButton = new QToolButton(this);
     clearButton->setIcon(QIcon(":/png/reset.png"));
-    clearButton->setText(QStringLiteral("重置"));
-    clearButton->setToolTip(QStringLiteral("重置设置"));
+    clearButton->setText("Reset");
+    clearButton->setToolTip("Reset settings");
     clearButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
     QToolButton *aboutButton = new QToolButton(this);
     aboutButton->setIcon(QIcon(":/png/about.png"));
-    aboutButton->setText(QStringLiteral("关于"));
-    aboutButton->setToolTip(QStringLiteral("关于"));
+    aboutButton->setText("About");
+    aboutButton->setToolTip("About");
     aboutButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
     QToolButton *helpButton = new QToolButton(this);
     helpButton->setIcon(QIcon(":/png/help.png"));
-    helpButton->setText(QStringLiteral("帮助"));
-    helpButton->setToolTip(QStringLiteral("帮助"));
+    helpButton->setText("Help");
+    helpButton->setToolTip("Help");
     helpButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     connect(helpButton, &QPushButton::clicked, this, []() {
         QDesktopServices::openUrl(QUrl("https://ocn1lplwg6gi.feishu.cn/wiki/Ual4wc4SxiKIodkuSSUcpLBTnsc?from=from_copylink"));
@@ -241,15 +241,15 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
     // 添加导入按钮
     QToolButton *importButton = new QToolButton(this);
     importButton->setIcon(QIcon(":/png/import.png"));
-    importButton->setText(QStringLiteral("导入"));
-    importButton->setToolTip(QStringLiteral("从文件导入设置"));
+    importButton->setText("Import");
+    importButton->setToolTip("Import settings from file");
     importButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
     // 添加导出按钮
     QToolButton *exportButton = new QToolButton(this);
     exportButton->setIcon(QIcon(":/png/export.png"));
-    exportButton->setText(QStringLiteral("导出"));
-    exportButton->setToolTip(QStringLiteral("导出设置到文件"));
+    exportButton->setText("Export");
+    exportButton->setToolTip("Export settings to file");
     exportButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
     QFrame *toolButtonFrame = new QFrame();
@@ -276,14 +276,14 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
     connect(importButton, &QPushButton::clicked, this, [this]() {
         QString filename = QFileDialog::getOpenFileName(
             this,
-            QStringLiteral("导入设置"),
+            "Import Settings",
             QDir::currentPath(),
-            QStringLiteral("MouseAssistantStd设置文件 (*.masset)"));
+            "MouseAssistantStd Settings Files (*.masset)");
             
         if (!filename.isEmpty()) {
             loadSettingsFromFile(filename);
-            QMessageBox::information(this, QStringLiteral("成功"), 
-                QStringLiteral("设置已成功导入！"));
+            QMessageBox::information(this, "Success", 
+                "Settings imported successfully!");
         }
     });
 
@@ -292,32 +292,32 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
                 .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
             QString filename = QFileDialog::getSaveFileName(
                 this,
-                QStringLiteral("导出设置"),
+                "Export Settings",
                 QDir::currentPath() + "/" + defaultFileName,
-                QStringLiteral("MouseAssistantStd设置文件 (*.masset)"));
+                "MouseAssistantStd Settings Files (*.masset)");
             
         if (!filename.isEmpty()) {
             if(!filename.endsWith(".masset", Qt::CaseInsensitive)) {
                 filename += ".masset";
             }
             saveSettingsToFile(filename);
-            QMessageBox::information(this, QStringLiteral("成功"), 
-                QStringLiteral("设置已成功导出！"));
+            QMessageBox::information(this, "Success", 
+                "Settings exported successfully!");
         }
     });
 
-    QLabel *label = new QLabel(QStringLiteral("选择窗口:"), this);
+    QLabel *label = new QLabel("Select Window:", this);
     layout->addWidget(label);
 
-    selectedWindowLabel = new QLabel(QStringLiteral("未选择窗口"), this);
+    selectedWindowLabel = new QLabel("No window selected", this);
     selectedWindowLabel->setStyleSheet("color: green;");
     layout->addWidget(selectedWindowLabel);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
-    QPushButton *selectButton = new QPushButton(QStringLiteral("选择窗口"), this);
+    QPushButton *selectButton = new QPushButton("Select Window", this);
     buttonLayout->addWidget(selectButton);
 
-    QPushButton *highlightButton = new QPushButton(QStringLiteral("凸显所选窗口"), this);
+    QPushButton *highlightButton = new QPushButton("Highlight Selected Window", this);
     buttonLayout->addWidget(highlightButton);
 
     connect(selectButton, &QPushButton::clicked, this, &MouseAssistantStd::selectWindow);
@@ -334,7 +334,7 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
     connect(topmostCheckBox, &QCheckBox::stateChanged, this, &MouseAssistantStd::onTopmostCheckBoxChanged);
 
 
-    QLabel *keysLabel = new QLabel(QStringLiteral("自定义鼠标消息和点击位置、时间间隔 (毫秒) [范围]:"), this);
+    QLabel *keysLabel = new QLabel("Custom mouse messages, click positions, and time intervals (milliseconds) [range]:", this);
     layout->addWidget(keysLabel);
 
     QGridLayout *keysLayout = new QGridLayout();
