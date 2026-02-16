@@ -1,4 +1,5 @@
 ﻿﻿#include "MouseAssistantStd.h"
+#include <windows.h>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QToolButton>
