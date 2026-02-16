@@ -29,6 +29,9 @@ jobs:
       with:
         arch: x64
 
+    - name: Set code page to UTF-8
+      run: chcp 65001
+
     - name: Build with qmake
       run: |
         qmake MouseAssistant.pro
