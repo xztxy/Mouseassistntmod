@@ -1,0 +1,73 @@
+name: Build and Release MouseAssistant
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]  # 监听以v开头的标签（如v1.0.0）
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '5.15.2'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        tools: 'tools_openssl'
+        set-env: true
+
+    - name: Add MSVC to PATH
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Build with qmake
+      run: |
+        qmake MouseAssistant.pro
+        nmake
+
+    - name: Deploy Qt dependencies
+      run: |
+        if (Test-Path "release\MouseAssistantStd.exe") {
+          $exePath = "release\MouseAssistantStd.exe"
+        } else {
+          $exePath = "MouseAssistantStd.exe"
+        }
+        & "$env:QT_ROOT\bin\windeployqt.exe" --release --no-translations --no-system-d3d-compiler $exePath
+
+    - name: Create artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: MouseAssistant
+        path: |
+          **/MouseAssistantStd.exe
+          **/*.dll
+          **/*.qm
+          **/*.png
+
+    - name: Create Release and Upload Assets
+      if: startsWith(github.ref, 'refs/tags/')  # 仅当推送标签时执行
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          **/MouseAssistantStd.exe
+          **/*.dll
+          **/*.qm
+          **/*.png
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## MouseAssistant Release
+          - 自动构建版本：${{ github.ref_name }}
+          - 构建时间：${{ github.event.head_commit.timestamp }}
+          - 提交信息：${{ github.event.head_commit.message }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
