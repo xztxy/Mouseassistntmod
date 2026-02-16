@@ -1,4 +1,4 @@
-﻿#include "MouseAssistantStd.h"
+﻿﻿#include "MouseAssistantStd.h"
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QToolButton>
@@ -64,8 +64,35 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
             int y = mouseStruct->pt.y;
             //label->setText(QString("点击位置: (%1, %2)").arg(x).arg(y));
             if((MouseAssistantStd::instance)->curPointEdit != nullptr){
-                 POINT pt = { x, y };
+                POINT pt = { x, y };
                 ScreenToClient((MouseAssistantStd::instance)->targetHwnd, &pt);
+                
+                // 获取目标窗口的客户区大小
+                RECT clientRect;
+                GetClientRect((MouseAssistantStd::instance)->targetHwnd, &clientRect);
+                int clientWidth = clientRect.right - clientRect.left;
+                int clientHeight = clientRect.bottom - clientRect.top;
+                
+                // 计算相对坐标
+                double relativeX = clientWidth > 0 ? (double)pt.x / clientWidth : 0;
+                double relativeY = clientHeight > 0 ? (double)pt.y / clientHeight : 0;
+                
+                // 确定当前正在编辑的点索引
+                int pointIndex = -1;
+                for (int i = 0; i < 10; ++i) {
+                    if ((MouseAssistantStd::instance)->curPointEdit == (MouseAssistantStd::instance)->pointEdits[i]) {
+                        pointIndex = i;
+                        break;
+                    }
+                }
+                
+                // 保存相对坐标和窗口大小信息
+                if (pointIndex != -1) {
+                    (MouseAssistantStd::instance)->pointInfos[pointIndex] = PointInfo(
+                        relativeX, relativeY, clientWidth, clientHeight
+                    );
+                }
+                
                 (MouseAssistantStd::instance)->curPointEdit->setText(QString("%1,%2").arg(pt.x).arg(pt.y));
                 (MouseAssistantStd::instance)->curPointEdit->setStyleSheet("color: black;");
             }
@@ -299,6 +326,9 @@ MouseAssistantStd::MouseAssistantStd(QWidget *parent) : QWidget(parent) {
 
     topmostCheckBox = new QCheckBox(QStringLiteral("保持选择窗口激活置顶（推荐勾选）"), this);
     layout->addWidget(topmostCheckBox);
+
+    backgroundModeCheckBox = new QCheckBox(QStringLiteral("后台执行模式（不激活窗口）"), this);
+    layout->addWidget(backgroundModeCheckBox);
 
     connect(topmostCheckBox, &QCheckBox::stateChanged, this, &MouseAssistantStd::onTopmostCheckBoxChanged);
 
@@ -540,7 +570,11 @@ void MouseAssistantStd::stopAllTimers() {
 
 void MouseAssistantStd::pressKeys(int index) {
     if (targetHwnd) {
-        if(topmostCheckBox->isChecked()){
+        // 检查是否启用后台执行模式
+        bool isBackgroundMode = backgroundModeCheckBox->isChecked();
+        
+        // 只有在非后台模式且勾选了置顶选项时才激活窗口
+        if(!isBackgroundMode && topmostCheckBox->isChecked()){
             // 如果窗口最小化则先恢复窗口
             if (IsIconic(targetHwnd)) {
                 ShowWindow(targetHwnd, SW_RESTORE);
@@ -548,11 +582,28 @@ void MouseAssistantStd::pressKeys(int index) {
             SetWindowPos(targetHwnd, topmostCheckBox->isChecked() ? HWND_TOPMOST : HWND_NOTOPMOST,
                          0, 0, 0, 0, SWP_SHOWWINDOW | SWP_NOMOVE | SWP_NOSIZE);
         }
+        
         int key = keyCombos[index]->currentData().toInt();
         QString point = pointEdits[index]->text();
         auto pt = point.split(",");
         if(pt.size() != 2) return;
-        sendMouseMsg(targetHwnd, pt[0].toInt(), pt[1].toInt(), key);
+        
+        // 获取当前窗口的客户区大小
+        RECT clientRect;
+        GetClientRect(targetHwnd, &clientRect);
+        int currentWidth = clientRect.right - clientRect.left;
+        int currentHeight = clientRect.bottom - clientRect.top;
+        
+        // 检查是否有保存的相对坐标信息
+        if (pointInfos[index].windowWidth > 0 && pointInfos[index].windowHeight > 0) {
+            // 使用相对坐标计算当前窗口的绝对坐标
+            int newX = (int)(pointInfos[index].relativeX * currentWidth);
+            int newY = (int)(pointInfos[index].relativeY * currentHeight);
+            sendMouseMsg(targetHwnd, newX, newY, key);
+        } else {
+            // 如果没有相对坐标信息，使用原始绝对坐标
+            sendMouseMsg(targetHwnd, pt[0].toInt(), pt[1].toInt(), key);
+        }
     }
 }
 
@@ -563,12 +614,21 @@ int MouseAssistantStd::getRandomInterval(int minInterval, int maxInterval) {
 void MouseAssistantStd::loadSettings() {
     QSettings settings("FinnSoft", "MouseAssistantStd");
     triggerKeyComboBox->setCurrentIndex(settings.value("triggerKeyComboBox", 0).toInt());
+    topmostCheckBox->setChecked(settings.value("topmostCheckBox", false).toBool());
+    backgroundModeCheckBox->setChecked(settings.value("backgroundModeCheckBox", false).toBool());
+    
     for (int i = 0; i < 10; ++i) {
         keyCheckBoxes[i]->setChecked(settings.value(QString("keyCheckBox%1").arg(i), false).toBool());
         keyCombos[i]->setCurrentIndex(settings.value(QString("keyCombo%1").arg(i), 0).toInt());
         intervalLineEdits[i]->setText(settings.value(QString("intervalLineEdit%1").arg(i), "1000").toString());
         maxIntervalLineEdits[i]->setText(settings.value(QString("maxIntervalLineEdit%1").arg(i), "1000").toString());
         pointEdits[i]->setText(settings.value(QString("pointEdit%1").arg(i), "").toString());
+        
+        // 加载相对坐标信息
+        pointInfos[i].relativeX = settings.value(QString("pointInfo%1_relativeX").arg(i), 0).toDouble();
+        pointInfos[i].relativeY = settings.value(QString("pointInfo%1_relativeY").arg(i), 0).toDouble();
+        pointInfos[i].windowWidth = settings.value(QString("pointInfo%1_windowWidth").arg(i), 0).toInt();
+        pointInfos[i].windowHeight = settings.value(QString("pointInfo%1_windowHeight").arg(i), 0).toInt();
     }
 }
 
@@ -576,12 +636,21 @@ void MouseAssistantStd::saveSettings() {
     QSettings settings("FinnSoft", "MouseAssistantStd");
 
     settings.setValue("triggerKeyComboBox",triggerKeyComboBox->currentIndex());
+    settings.setValue("topmostCheckBox", topmostCheckBox->isChecked());
+    settings.setValue("backgroundModeCheckBox", backgroundModeCheckBox->isChecked());
+    
     for (int i = 0; i < 10; ++i) {
         settings.setValue(QString("keyCheckBox%1").arg(i), keyCheckBoxes[i]->isChecked());
         settings.setValue(QString("keyCombo%1").arg(i), keyCombos[i]->currentIndex());
         settings.setValue(QString("intervalLineEdit%1").arg(i), intervalLineEdits[i]->text());
         settings.setValue(QString("maxIntervalLineEdit%1").arg(i), maxIntervalLineEdits[i]->text());
         settings.setValue(QString("pointEdit%1").arg(i), pointEdits[i]->text());
+        
+        // 保存相对坐标信息
+        settings.setValue(QString("pointInfo%1_relativeX").arg(i), pointInfos[i].relativeX);
+        settings.setValue(QString("pointInfo%1_relativeY").arg(i), pointInfos[i].relativeY);
+        settings.setValue(QString("pointInfo%1_windowWidth").arg(i), pointInfos[i].windowWidth);
+        settings.setValue(QString("pointInfo%1_windowHeight").arg(i), pointInfos[i].windowHeight);
     }
 }
 
@@ -590,6 +659,8 @@ void MouseAssistantStd::clearSettings() {
     settings.clear();  // 清除所有设置
 
     // 重置界面上的控件为默认值
+    topmostCheckBox->setChecked(false);
+    backgroundModeCheckBox->setChecked(false);
 
     for (int i = 0; i < 10; ++i) {
         keyCheckBoxes[i]->setChecked(false);
@@ -597,6 +668,9 @@ void MouseAssistantStd::clearSettings() {
         intervalLineEdits[i]->setText("1000");
         maxIntervalLineEdits[i]->setText("1000");
         pointEdits[i]->setText("");
+        
+        // 重置相对坐标信息
+        pointInfos[i] = PointInfo();
     }
 }
 
@@ -605,12 +679,21 @@ void MouseAssistantStd::loadSettingsFromFile(const QString &filename) {
     QSettings fileSettings(filename, QSettings::IniFormat);
     
     triggerKeyComboBox->setCurrentIndex(fileSettings.value("triggerKeyComboBox", 0).toInt());
+    topmostCheckBox->setChecked(fileSettings.value("topmostCheckBox", false).toBool());
+    backgroundModeCheckBox->setChecked(fileSettings.value("backgroundModeCheckBox", false).toBool());
+    
     for (int i = 0; i < 10; ++i) {
         keyCheckBoxes[i]->setChecked(fileSettings.value(QString("keyCheckBox%1").arg(i), false).toBool());
         keyCombos[i]->setCurrentIndex(fileSettings.value(QString("keyCombo%1").arg(i), 0).toInt());
         intervalLineEdits[i]->setText(fileSettings.value(QString("intervalLineEdit%1").arg(i), "1000").toString());
         maxIntervalLineEdits[i]->setText(fileSettings.value(QString("maxIntervalLineEdit%1").arg(i), "1000").toString());
         pointEdits[i]->setText(fileSettings.value(QString("pointEdit%1").arg(i), "").toString());
+        
+        // 加载相对坐标信息
+        pointInfos[i].relativeX = fileSettings.value(QString("pointInfo%1_relativeX").arg(i), 0).toDouble();
+        pointInfos[i].relativeY = fileSettings.value(QString("pointInfo%1_relativeY").arg(i), 0).toDouble();
+        pointInfos[i].windowWidth = fileSettings.value(QString("pointInfo%1_windowWidth").arg(i), 0).toInt();
+        pointInfos[i].windowHeight = fileSettings.value(QString("pointInfo%1_windowHeight").arg(i), 0).toInt();
     }
 }
 
@@ -620,12 +703,21 @@ void MouseAssistantStd::saveSettingsToFile(const QString &filename) {
     fileSettings.clear(); // 清除可能存在的旧设置
     
     fileSettings.setValue("triggerKeyComboBox",triggerKeyComboBox->currentIndex());
+    fileSettings.setValue("topmostCheckBox", topmostCheckBox->isChecked());
+    fileSettings.setValue("backgroundModeCheckBox", backgroundModeCheckBox->isChecked());
+    
     for (int i = 0; i < 10; ++i) {
         fileSettings.setValue(QString("keyCheckBox%1").arg(i), keyCheckBoxes[i]->isChecked());
         fileSettings.setValue(QString("keyCombo%1").arg(i), keyCombos[i]->currentIndex());
         fileSettings.setValue(QString("intervalLineEdit%1").arg(i), intervalLineEdits[i]->text());
         fileSettings.setValue(QString("maxIntervalLineEdit%1").arg(i), maxIntervalLineEdits[i]->text());
         fileSettings.setValue(QString("pointEdit%1").arg(i), pointEdits[i]->text());
+        
+        // 保存相对坐标信息
+        fileSettings.setValue(QString("pointInfo%1_relativeX").arg(i), pointInfos[i].relativeX);
+        fileSettings.setValue(QString("pointInfo%1_relativeY").arg(i), pointInfos[i].relativeY);
+        fileSettings.setValue(QString("pointInfo%1_windowWidth").arg(i), pointInfos[i].windowWidth);
+        fileSettings.setValue(QString("pointInfo%1_windowHeight").arg(i), pointInfos[i].windowHeight);
     }
 }
 

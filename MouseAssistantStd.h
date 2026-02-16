@@ -13,6 +13,18 @@
 #include <QGroupBox>
 #include <QPushButton>
 
+// 存储相对坐标和窗口大小信息的结构体
+struct PointInfo {
+    double relativeX;  // 相对X坐标（0-1）
+    double relativeY;  // 相对Y坐标（0-1）
+    int windowWidth;   // 保存时的窗口宽度
+    int windowHeight;  // 保存时的窗口高度
+    
+    PointInfo() : relativeX(0), relativeY(0), windowWidth(0), windowHeight(0) {}
+    PointInfo(double x, double y, int width, int height) : 
+        relativeX(x), relativeY(y), windowWidth(width), windowHeight(height) {}
+};
+
 class MouseAssistantStd : public QWidget {
     Q_OBJECT
 
@@ -41,6 +53,7 @@ private:
     static void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime);
 
     QCheckBox *topmostCheckBox;
+    QCheckBox *backgroundModeCheckBox;  // 后台执行模式选项
     QLabel *selectedWindowLabel;
     QCheckBox *keyCheckBoxes[10];
     QComboBox *keyCombos[10];
@@ -49,7 +62,7 @@ private:
     QLineEdit *pointEdits[10];
     QPushButton *selectPointButton[10];
     std::vector<QTimer*> timers;
-
+    PointInfo pointInfos[10];  // 存储每个点击任务的相对坐标和窗口大小信息
 
     void populateKeyCombos(QComboBox *comboBox);
     void stopAllTimers();
