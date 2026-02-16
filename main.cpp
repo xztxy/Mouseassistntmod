@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 
     MouseAssistantStd keyPresser;
     keyPresser.setWindowIcon(QIcon(":/mouse.ico"));
-    keyPresser.setWindowTitle(QStringLiteral("鼠标助手 标准版"));
+    keyPresser.setWindowTitle("Mouse Assistant Standard");
 
 
     keyPresser.show();
